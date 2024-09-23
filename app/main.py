@@ -43,6 +43,3 @@ if __name__ == "__main__":
         skip_updates=True,
         on_startup=on_startup,
     )
-
-# TODO: докер поставить на линукс и во время тех работ просто в докер environment менять файлы
-# и они автоматом будут меняться
