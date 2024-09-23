@@ -3,10 +3,10 @@ import json
 from aiogram import types
 from aiogram.dispatcher import Dispatcher
 from database.database import session
-from keyboards.inline import create_close_keyboard
+from keyboards.admin.inline import create_close_keyboard
 from database.models import User, UserJobDirection
 from datetime import datetime
-from keyboards.reply import main_menu
+from keyboards.profile.reply import main_menu
 from config.settings import BOT_NAME, RECORD_INTERVAL, SHORT_RECORD_INTERVAL
 from core.redis_client import redis
 

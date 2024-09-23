@@ -3,7 +3,7 @@ from aiogram import types
 from aiogram.dispatcher import FSMContext
 from database.database import session
 from database.models import User
-from keyboards.inline import admin_menu
+from keyboards.admin.inline import admin_menu
 from config.settings import BOT_NAME, RECORD_INTERVAL
 from core.redis_client import redis
 

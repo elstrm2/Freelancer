@@ -3,8 +3,8 @@ from aiogram import types
 from database.database import session
 from aiogram.dispatcher import FSMContext
 from database.models import User
-from keyboards.inline import profile_menu
 from config.settings import BOT_NAME
+from keyboards.profile.inline import profile_menu
 
 logger = logging.getLogger(BOT_NAME)
 

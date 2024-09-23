@@ -5,7 +5,7 @@ from aiogram.dispatcher import Dispatcher
 from database.database import session
 from database.models import User, BotSetting
 from handlers.search.search import get_user_search_status
-from keyboards.reply import main_menu
+from keyboards.profile.reply import main_menu
 from config.settings import BOT_NAME, RECORD_INTERVAL
 from core.redis_client import redis
 

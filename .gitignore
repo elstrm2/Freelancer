@@ -30,7 +30,12 @@
 !/handlers/search/
 !/handlers/start/
 !handlers/admin/admin.py
+!handlers/profile/__init__.py
 !handlers/profile/profile.py
+!handlers/profile/directions.py
+!handlers/profile/promocodes.py
+!handlers/profile/subscription.py
+!handlers/profile/support.py
 !handlers/profile/support.py
 !handlers/search/__init__.py
 !handlers/search/search.py
@@ -38,7 +43,13 @@
 !handlers/start/start.py
 
 !/keyboards/
-!keyboards/reply.py
+!keyboards/admin/
+!keyboards/admin/.gitkeep
+!keyboards/profile/
+!keyboards/profile/reply.py
+!keyboards/profile/inline.py
+!keyboards/shared/
+!keyboards/shared/inline.py
 
 !/logs/
 !logs/.gitkeep
