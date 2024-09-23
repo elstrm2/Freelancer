@@ -39,7 +39,7 @@ async def cmd_start(message: types.Message):
         greeting_text = (
             getattr(greeting_message, greeting_type)
             if greeting_message
-            else "Привет! Ты забыл настроить registered_user_greeting или new_user_greeting."
+            else "Привет! Администратор забыл настроить registered_user_greeting или new_user_greeting."
         )
         await redis.set(greeting_cache_key, greeting_text, ex=RECORD_INTERVAL)
         logger.debug(
