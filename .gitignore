@@ -19,8 +19,7 @@
 !/database/**/*
 !/database/__init__.py
 !/database/database.py
-
-/database/models.py
+!/database/models.py
 
 !/core/parser/
 !core/parser/.gitkeep
