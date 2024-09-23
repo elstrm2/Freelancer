@@ -1,0 +1,11 @@
+# Игнорирование всех файлов в проекте
+*
+
+# Разрешение отслеживания конкретных файлов и папок
+!/.gitignore
+!/app/
+!/config/settings.py
+!/core/bot.py
+!/core/logger.py
+!/core/redis_client.py
+!/core/database.py
