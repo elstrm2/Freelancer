@@ -46,6 +46,7 @@
 
 !/middlewares/
 !middlewares/tech_works.py
+!middlewares/ban.py
 
 !/scripts/
 !/scripts/**

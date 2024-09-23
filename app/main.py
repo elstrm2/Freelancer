@@ -10,7 +10,7 @@ from handlers.profile import register_handlers_profile
 from handlers.search import register_handlers_search
 from handlers.start import register_handlers_start
 from core.parser import main as parser_main
-from middlewares.shadow_ban import ShadowBanMiddleware
+from middlewares.ban import BanMiddleware
 from middlewares.anti_spam import ThrottlingMiddleware
 from middlewares.tech_works import TechWorksMiddleware
 from tasks.record_load_history import (
@@ -28,7 +28,7 @@ register_handlers_search(dp)
 register_handlers_start(dp)
 
 dp.middleware.setup(TechWorksMiddleware())
-dp.middleware.setup(ShadowBanMiddleware())
+dp.middleware.setup(BanMiddleware())
 dp.middleware.setup(ThrottlingMiddleware())
 
 
