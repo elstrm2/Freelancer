@@ -30,23 +30,28 @@
 !/handlers/profile/
 !/handlers/search/
 !/handlers/start/
-!handlers/admin/.gitkeep
-!handlers/profile/.gitkeep
-!handlers/search/.gitkeep
-!handlers/start/.gitkeep
+!handlers/admin/admin.py
+!handlers/profile/profile.py
+!handlers/profile/support.py
+!handlers/search/__init__.py
+!handlers/search/search.py
+!handlers/start/__init__.py
+!handlers/start/start.py
 
 !/keyboards/
-!keyboards/.gitkeep
 !keyboards/reply.py
 
 !/logs/
 !logs/.gitkeep
 
 !/middlewares/
-!middlewares/.gitkeep
+!middlewares/tech_works.py
 
 !/scripts/
 !/scripts/**
 
 !/tasks/
-!tasks/.gitkeep
+!tasks/record_load_history.py
+!tasks/subscription_paid.py
+
+!requirements.txt
