@@ -45,7 +45,7 @@ def add_user():
         if validate_boolean(is_admin):
             is_admin = bool(int(is_admin))
             break
-        print("Неверное значение. Введите 1 для Да или 0 для Нет.")
+        print("Неверное значение. Введи 1 для Да или 0 для Нет.")
 
     existing_user = session.query(User).filter_by(user_id=user_id).first()
     if existing_user:
