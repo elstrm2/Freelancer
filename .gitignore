@@ -37,6 +37,7 @@
 
 !/keyboards/
 !keyboards/.gitkeep
+!keyboards/reply.py
 
 !/logs/
 !logs/.gitkeep
