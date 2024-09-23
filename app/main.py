@@ -3,8 +3,7 @@ from aiogram import Dispatcher
 from aiogram.contrib.fsm_storage.redis import RedisStorage2
 from aiogram.utils import executor
 from config.settings import REDIS_SETTINGS
-from core.bot import bot  # Импорт бота
-from core.redis_client import redis  # Импорт redis клиента
+from core.bot import bot
 from core import logger
 from handlers.admin import register_handlers_admin
 from handlers.profile import register_handlers_profile
@@ -16,30 +15,25 @@ from middlewares.anti_spam import ThrottlingMiddleware
 from middlewares.tech_works import TechWorksMiddleware
 from tasks.record_load_history import (
     record_load_history,
-)  # Импорт функции записи истории загрузки
+)
 
 logger.start()
 
 storage = RedisStorage2(**REDIS_SETTINGS)
 dp = Dispatcher(bot, storage=storage)
 
-# Регистрация всех хэндлеров
 register_handlers_admin(dp)
 register_handlers_profile(dp)
 register_handlers_search(dp)
 register_handlers_start(dp)
 
-# Подключение middleware к диспетчеру
 dp.middleware.setup(TechWorksMiddleware())
 dp.middleware.setup(ShadowBanMiddleware())
 dp.middleware.setup(ThrottlingMiddleware())
 
 
 async def on_startup(dp: Dispatcher):
-    # Запуск основного парсера
     asyncio.create_task(parser_main.main())
-
-    # Запуск записи истории загрузки
     asyncio.create_task(record_load_history())
 
 
@@ -47,9 +41,8 @@ if __name__ == "__main__":
     executor.start_polling(
         dp,
         skip_updates=True,
-        on_startup=on_startup,  # Передаем нашу функцию on_startup
+        on_startup=on_startup,
     )
-
 
 # TODO: докер поставить на линукс и во время тех работ просто в докер environment менять файлы
 # и они автоматом будут меняться
