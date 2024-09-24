@@ -2,13 +2,16 @@ import logging
 import json
 from aiogram import types
 from aiogram.dispatcher import Dispatcher
-from database.database import session
-from keyboards.admin.inline import create_close_keyboard
-from database.models import User, UserJobDirection
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+from core.parser.main import get_user_directions
+from database.database import get_session
+from database.models import User
 from datetime import datetime
 from keyboards.profile.reply import main_menu
 from config.settings import BOT_NAME, RECORD_INTERVAL, SHORT_RECORD_INTERVAL
 from core.redis_client import redis
+from keyboards.shared.inline import create_close_keyboard
 
 logger = logging.getLogger(BOT_NAME)
 
@@ -36,63 +39,23 @@ async def get_user_subscription_end(user_id):
             else subscription_end
         )
     else:
-        user = session.query(User).filter_by(user_id=user_id).first()
-        if user and user.subscription_end:
-            subscription_end = user.subscription_end.isoformat()
-            await redis.set(subscription_key, subscription_end, ex=RECORD_INTERVAL)
-            logger.debug(
-                f"Дата окончания подписки загружена из базы и сохранена в кэш для пользователя {user_id}."
+        async with get_session() as session:
+            session: AsyncSession
+            result = await session.execute(
+                select(User).filter_by(user_id=user_id).limit(1)
             )
-        else:
-            subscription_end = None
+            user = result.scalar_one_or_none()
+
+            if user and user.subscription_end:
+                subscription_end = user.subscription_end.isoformat()
+                await redis.set(subscription_key, subscription_end, ex=RECORD_INTERVAL)
+                logger.debug(
+                    f"Дата окончания подписки загружена из базы и сохранена в кэш для пользователя {user_id}."
+                )
+            else:
+                subscription_end = None
 
     return subscription_end
-
-
-async def get_user_directions(user_id):
-    directions_key = get_user_directions_key(user_id)
-    cached_directions = await redis.get(directions_key)
-
-    if cached_directions:
-        user_directions = json.loads(
-            cached_directions.decode("utf-8")
-            if isinstance(cached_directions, bytes)
-            else cached_directions
-        )
-        logger.debug(f"Направления пользователя {user_id} загружены из кэша.")
-    else:
-        user = session.query(User).filter_by(user_id=user_id).first()
-        if not user:
-            logger.debug(f"Пользователь с user_id {user_id} не найден.")
-            return []
-
-        internal_user_id = user.id
-
-        user_directions = (
-            session.query(UserJobDirection).filter_by(user_id=internal_user_id).all()
-        )
-
-        user_directions = [
-            {
-                "id": direction.id,
-                "direction_id": direction.direction_id,
-                "selected_keywords": direction.selected_keywords,
-                "direction_name": direction.direction.direction_name,
-            }
-            for direction in user_directions
-        ]
-
-        if user_directions:
-            await redis.set(
-                directions_key, json.dumps(user_directions), ex=RECORD_INTERVAL
-            )
-            logger.debug(
-                f"Направления пользователя {user_id} загружены из базы и сохранены в кэш."
-            )
-        else:
-            user_directions = []
-
-    return user_directions
 
 
 async def get_user_search_status(user_id):

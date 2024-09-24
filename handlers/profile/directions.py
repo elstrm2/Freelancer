@@ -3,7 +3,9 @@ import logging
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.types import CallbackQuery
-from database.database import session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+from database.database import get_session
 from database.models import JobDirection, User, UserJobDirection
 from handlers.profile.profile import close_menu
 from handlers.admin.utils import paginate_items
@@ -46,18 +48,21 @@ async def get_all_job_directions():
     if cached_directions:
         job_directions = json.loads(cached_directions)
     else:
-        job_directions = session.query(JobDirection).all()
-        job_directions = [
-            {
-                "id": direction.id,
-                "direction_name": direction.direction_name,
-                "recommended_keywords": direction.recommended_keywords,
-            }
-            for direction in job_directions
-        ]
-        await redis.set(
-            directions_cache_key, json.dumps(job_directions), ex=RECORD_INTERVAL
-        )
+        async with get_session() as session:
+            session: AsyncSession
+            result = await session.execute(select(JobDirection))
+            job_directions = result.scalars().all()
+            job_directions = [
+                {
+                    "id": direction.id,
+                    "direction_name": direction.direction_name,
+                    "recommended_keywords": direction.recommended_keywords,
+                }
+                for direction in job_directions
+            ]
+            await redis.set(
+                directions_cache_key, json.dumps(job_directions), ex=RECORD_INTERVAL
+            )
     return job_directions
 
 
@@ -68,28 +73,33 @@ async def get_user_directions(user_id: int):
         user_directions = json.loads(cached_directions)
         logger.debug(f"user_directions cached: {user_directions}")
     else:
-        user = session.query(User).filter_by(user_id=user_id).first()
-        if not user:
-            logger.debug(f"User not found for user_id {user_id}.")
-            return []
+        async with get_session() as session:
+            session: AsyncSession
+            result = await session.execute(select(User).filter_by(user_id=user_id))
+            user = result.scalar_one_or_none()
+            if not user:
+                logger.debug(f"User not found for user_id {user_id}.")
+                return []
 
-        internal_user_id = user.id
-        user_directions = (
-            session.query(UserJobDirection).filter_by(user_id=internal_user_id).all()
-        )
-        user_directions = [
-            {
-                "id": user_direction.id,
-                "direction_id": user_direction.direction_id,
-                "selected_keywords": user_direction.selected_keywords,
-                "direction_name": user_direction.direction.direction_name,
-            }
-            for user_direction in user_directions
-        ]
-        logger.debug(f"user_directions cache create: {user_directions}")
-        await redis.set(
-            directions_cache_key, json.dumps(user_directions), ex=RECORD_INTERVAL
-        )
+            internal_user_id = user.id
+            result = await session.execute(
+                select(UserJobDirection).filter_by(user_id=internal_user_id)
+            )
+            user_directions = result.scalars().all()
+
+            user_directions = [
+                {
+                    "id": user_direction.id,
+                    "direction_id": user_direction.direction_id,
+                    "selected_keywords": user_direction.selected_keywords,
+                    "direction_name": user_direction.direction.direction_name,
+                }
+                for user_direction in user_directions
+            ]
+            logger.debug(f"user_directions cache create: {user_directions}")
+            await redis.set(
+                directions_cache_key, json.dumps(user_directions), ex=RECORD_INTERVAL
+            )
     return user_directions
 
 
@@ -99,11 +109,15 @@ async def get_keywords_for_direction(direction_id: int):
     if cached_keywords:
         keywords = json.loads(cached_keywords)
     else:
-        direction = session.query(JobDirection).get(direction_id)
-        if not direction:
-            return []
-        keywords = direction.recommended_keywords.split("\n")
-        await redis.set(keywords_cache_key, json.dumps(keywords), ex=RECORD_INTERVAL)
+        async with get_session() as session:
+            session: AsyncSession
+            direction = await session.get(JobDirection, direction_id)
+            if not direction:
+                return []
+            keywords = direction.recommended_keywords.split("\n")
+            await redis.set(
+                keywords_cache_key, json.dumps(keywords), ex=RECORD_INTERVAL
+            )
     return keywords
 
 
@@ -341,49 +355,58 @@ async def add_direction_confirm(call: CallbackQuery, state: FSMContext):
         )
 
         telegram_user_id = call.from_user.id
-        user = session.query(User).filter_by(user_id=telegram_user_id).first()
 
-        if not user:
-            logger.debug(
-                f"User not found in database for Telegram user_id {telegram_user_id}."
+        async with get_session() as session:
+            session: AsyncSession
+            # Поиск пользователя в базе данных по Telegram user_id
+            result = await session.execute(
+                select(User).filter_by(user_id=telegram_user_id)
             )
-            return
+            user = result.scalar_one_or_none()
 
-        internal_user_id = user.id
+            if not user:
+                logger.debug(
+                    f"User not found in database for Telegram user_id {telegram_user_id}."
+                )
+                return
 
-        existing_direction = (
-            session.query(UserJobDirection)
-            .filter_by(user_id=internal_user_id, direction_id=direction_id)
-            .first()
-        )
+            internal_user_id = user.id
 
-        if existing_direction:
-            logger.debug(
-                f"Direction {direction_id} already exists for user {internal_user_id}"
+            # Проверка на существование направления для пользователя
+            result = await session.execute(
+                select(UserJobDirection).filter_by(
+                    user_id=internal_user_id, direction_id=direction_id
+                )
             )
-            await call.message.edit_text(
-                "⚠️ Это направление уже существует в твоем профиле.",
-                reply_markup=create_close_back_keyboard("profile_directions_back"),
-            )
-        else:
-            logger.debug(
-                f"Adding new direction {direction_id} for user {internal_user_id}"
-            )
+            existing_direction = result.scalar_one_or_none()
 
-            new_direction = UserJobDirection(
-                user_id=internal_user_id,
-                direction_id=direction_id,
-                selected_keywords="\n".join(selected_keywords),
-            )
-            session.add(new_direction)
-            session.commit()
+            if existing_direction:
+                logger.debug(
+                    f"Direction {direction_id} already exists for user {internal_user_id}"
+                )
+                await call.message.edit_text(
+                    "⚠️ Это направление уже существует в твоем профиле.",
+                    reply_markup=create_close_back_keyboard("profile_directions_back"),
+                )
+            else:
+                logger.debug(
+                    f"Adding new direction {direction_id} for user {internal_user_id}"
+                )
 
-            await redis.delete(f"user:{telegram_user_id}:directions")
+                new_direction = UserJobDirection(
+                    user_id=internal_user_id,
+                    direction_id=direction_id,
+                    selected_keywords="\n".join(selected_keywords),
+                )
+                session.add(new_direction)
+                await session.commit()
 
-            await call.message.edit_text(
-                "✅ Направление успешно добавлено.",
-                reply_markup=create_close_back_keyboard("profile_directions_back"),
-            )
+                await redis.delete(f"user:{telegram_user_id}:directions")
+
+                await call.message.edit_text(
+                    "✅ Направление успешно добавлено.",
+                    reply_markup=create_close_back_keyboard("profile_directions_back"),
+                )
 
     elif call.data == "profile_confirm_add_direction_no":
         logger.debug("Addition of direction cancelled")
@@ -598,20 +621,38 @@ async def edit_direction_confirm(call: CallbackQuery, state: FSMContext):
     if call.data == "profile_confirm_edit_direction_keywords_yes":
         logger.debug(f"Saving keyword changes for direction_id: {direction_id}")
 
-        user_direction = session.query(UserJobDirection).get(direction_id)
-        user_direction.selected_keywords = "\n".join(data["selected_keywords"])
-        session.commit()
+        async with get_session() as session:
+            session: AsyncSession
+            # Получаем запись направления пользователя по идентификатору
+            user_direction = await session.get(UserJobDirection, direction_id)
 
-        directions_cache_key = f"user:{call.from_user.id}:directions"
-        await redis.delete(directions_cache_key)
+            if user_direction:
+                # Обновляем ключевые слова направления
+                user_direction.selected_keywords = "\n".join(data["selected_keywords"])
+                await session.commit()
 
-        logger.debug("Keywords successfully updated")
-        await call.message.edit_text(
-            "✅ Ключевые слова направления изменены.",
-            reply_markup=create_close_back_keyboard(
-                f"profile_directions_{direction_id}"
-            ),
-        )
+                # Удаляем кеш для направлений пользователя
+                directions_cache_key = f"user:{call.from_user.id}:directions"
+                await redis.delete(directions_cache_key)
+
+                logger.debug("Keywords successfully updated")
+                await call.message.edit_text(
+                    "✅ Ключевые слова направления изменены.",
+                    reply_markup=create_close_back_keyboard(
+                        f"profile_directions_{direction_id}"
+                    ),
+                )
+            else:
+                logger.debug(
+                    f"UserJobDirection not found for direction_id {direction_id}."
+                )
+                await call.message.edit_text(
+                    "❌ Не удалось найти направление для изменения ключевых слов.",
+                    reply_markup=create_close_back_keyboard(
+                        f"profile_directions_{direction_id}"
+                    ),
+                )
+
     elif call.data == "profile_confirm_edit_direction_keywords_no":
         logger.debug("Keyword change cancelled")
         await call.message.edit_text(
@@ -663,23 +704,38 @@ async def delete_direction(call: CallbackQuery, state: FSMContext):
     logger.debug(f"delete_direction called with call.data: {call.data}")
 
     direction_id = int(call.data.split("_")[-1])
-    user_direction = session.query(UserJobDirection).get(direction_id)
 
-    if user_direction:
-        logger.debug(f"Deleting direction: {user_direction.direction.direction_name}")
-        session.delete(user_direction)
-        session.commit()
+    async with get_session() as session:
+        session: AsyncSession
+        # Получаем направление пользователя по идентификатору
+        user_direction = await session.get(UserJobDirection, direction_id)
 
-        user_id = call.from_user.id
-        directions_cache_key = f"user:{user_id}:directions"
-        keywords_cache_key = f"job_direction:{user_direction.direction_id}:keywords"
-        await redis.delete(directions_cache_key)
-        await redis.delete(keywords_cache_key)
+        if user_direction:
+            logger.debug(
+                f"Deleting direction: {user_direction.direction.direction_name}"
+            )
+            await session.delete(user_direction)  # Удаляем объект
+            await session.commit()  # Подтверждаем транзакцию
 
-        await call.message.edit_text(
-            f"🗑️ Направление '{user_direction.direction.direction_name}' было удалено.",
-            reply_markup=create_close_back_keyboard(f"profile_directions_back"),
-        )
+            user_id = call.from_user.id
+            directions_cache_key = f"user:{user_id}:directions"
+            keywords_cache_key = f"job_direction:{user_direction.direction_id}:keywords"
+
+            # Удаляем кэш в Redis
+            await redis.delete(directions_cache_key)
+            await redis.delete(keywords_cache_key)
+
+            await call.message.edit_text(
+                f"🗑️ Направление '{user_direction.direction.direction_name}' было удалено.",
+                reply_markup=create_close_back_keyboard(f"profile_directions_back"),
+            )
+        else:
+            logger.debug(f"UserJobDirection not found for direction_id {direction_id}.")
+            await call.message.edit_text(
+                "❌ Не удалось найти направление для удаления.",
+                reply_markup=create_close_back_keyboard(f"profile_directions_back"),
+            )
+
     if state:
         logger.debug("Finishing current FSM state")
         await state.finish()

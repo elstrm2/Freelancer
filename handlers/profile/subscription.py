@@ -1,6 +1,8 @@
 import logging
 from aiogram import types
-from database.database import session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+from database.database import get_session
 from database.models import User, SubscriptionPlan
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.dispatcher import FSMContext
@@ -30,24 +32,29 @@ async def show_subscription_menu(call: types.CallbackQuery, state: FSMContext):
     subscription_end = await redis.get(f"user:{user_id}:subscription_end")
 
     if not subscription_end:
-        user = session.query(User).filter_by(user_id=user_id).first()
+        async with get_session() as session:
+            session: AsyncSession
+            result = await session.execute(
+                select(User).filter_by(user_id=user_id).limit(1)
+            )
+            user = result.scalar_one_or_none()
 
-        if user and user.subscription_end:
-            await redis.set(
-                f"user:{user_id}:subscription_end",
-                user.subscription_end.isoformat(),
-                ex=RECORD_INTERVAL,
-            )
-            subscription_end = user.subscription_end.isoformat()
-            logger.debug(
-                "Дата окончания подписки пользователя загружена из базы и сохранена в кэш."
-            )
-        else:
-            subscription_info = "❌ У тебя нет активной подписки"
-            await call.message.edit_text(
-                subscription_info, reply_markup=subscription_menu(None)
-            )
-            return
+            if user and user.subscription_end:
+                await redis.set(
+                    f"user:{user_id}:subscription_end",
+                    user.subscription_end.isoformat(),
+                    ex=RECORD_INTERVAL,
+                )
+                subscription_end = user.subscription_end.isoformat()
+                logger.debug(
+                    "Дата окончания подписки пользователя загружена из базы и сохранена в кэш."
+                )
+            else:
+                subscription_info = "❌ У тебя нет активной подписки"
+                await call.message.edit_text(
+                    subscription_info, reply_markup=subscription_menu(None)
+                )
+                return
 
     subscription_end_datetime = datetime.fromisoformat(subscription_end)
     if subscription_end_datetime > datetime.now():
@@ -79,12 +86,15 @@ async def show_subscription_plans(call: types.CallbackQuery, state: FSMContext):
         subscription_plans = eval(cached_plans)
         logger.debug("Планы подписки загружены из кэша.")
     else:
-        subscription_plans = session.query(SubscriptionPlan).all()
+        async with get_session() as session:
+            session: AsyncSession
+            result = await session.execute(select(SubscriptionPlan))
+            subscription_plans = result.scalars().all()
 
-        await redis.set(
-            "subscription_plans", str(subscription_plans), ex=RECORD_INTERVAL
-        )
-        logger.debug("Планы подписки загружены из базы данных и сохранены в кэш.")
+            await redis.set(
+                "subscription_plans", str(subscription_plans), ex=RECORD_INTERVAL
+            )
+            logger.debug("Планы подписки загружены из базы данных и сохранены в кэш.")
 
     await call.message.edit_text(
         "💳 Выбери план подписки:",
@@ -98,7 +108,10 @@ async def select_subscription_plan(call: types.CallbackQuery, state: FSMContext)
     logger.debug(f"select_subscription_plan called with data: {call.data}")
 
     plan_id = int(call.data.split("_")[-1])
-    plan = session.query(SubscriptionPlan).get(plan_id)
+
+    async with get_session() as session:
+        session: AsyncSession
+        plan = await session.get(SubscriptionPlan, plan_id)
 
     if not plan:
         await call.message.edit_text("❌ Выбранный план не найден")

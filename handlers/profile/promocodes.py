@@ -4,7 +4,9 @@ from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from config.settings import BOT_NAME, RECORD_INTERVAL
-from database.database import session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+from database.database import get_session
 from database.models import PromoCode, PromoCodeUsage, User
 from core.redis_client import redis
 from keyboards.shared.inline import (
@@ -41,40 +43,47 @@ async def enter_promo_code(message: types.Message, state: FSMContext):
     promo_code = await redis.hgetall(promo_code_key)
 
     if not promo_code:
-        promo_code = session.query(PromoCode).filter_by(code=promo_code_input).first()
-        if promo_code:
-            promo_code = {
-                "id": promo_code.id,
-                "name": promo_code.name,
-                "max_uses": promo_code.max_uses,
-                "promo_type": promo_code.promo_type,
-                "value": promo_code.value,
-            }
-            await redis.hset(promo_code_key, mapping=promo_code)
-            await redis.expire(promo_code_key, RECORD_INTERVAL)
-            logger.debug("Промокод загружен из базы и сохранен в кэш.")
-        else:
-            retry_count += 1
-            await state.update_data(retry_count=retry_count)
-            await message.bot.edit_message_text(
-                chat_id=message.chat.id,
-                message_id=message_id,
-                text=f"⚠️ Промокод не найден. Попытка {retry_count}. Попробуй ещё раз:",
-                reply_markup=create_close_back_keyboard("profile_back"),
+        async with get_session() as session:
+            session: AsyncSession
+            result = await session.execute(
+                select(PromoCode).filter_by(code=promo_code_input).limit(1)
             )
-            await EnterPromoCodeState.waiting_for_code.set()
-            return
+            promo_code_obj = result.scalar_one_or_none()
+
+            if promo_code_obj:
+                promo_code = {
+                    "id": promo_code_obj.id,
+                    "name": promo_code_obj.name,
+                    "max_uses": str(promo_code_obj.max_uses),
+                    "promo_type": promo_code_obj.promo_type,
+                    "value": str(promo_code_obj.value),
+                }
+                await redis.hset(promo_code_key, mapping=promo_code)
+                await redis.expire(promo_code_key, RECORD_INTERVAL)
+                logger.debug("Промокод загружен из базы и сохранен в кэш.")
+            else:
+                retry_count += 1
+                await state.update_data(retry_count=retry_count)
+                await message.bot.edit_message_text(
+                    chat_id=message.chat.id,
+                    message_id=message_id,
+                    text=f"⚠️ Промокод не найден. Попытка {retry_count}. Попробуй ещё раз:",
+                    reply_markup=create_close_back_keyboard("profile_back"),
+                )
+                await EnterPromoCodeState.waiting_for_code.set()
+                return
 
     usage_count_key = f"promo_code:{promo_code['id']}:usage_count"
     usage_count = await redis.get(usage_count_key)
 
     if usage_count is None:
-        usage_count = (
-            session.query(PromoCodeUsage)
-            .filter_by(promo_code_id=promo_code["id"])
-            .count()
-        )
-        await redis.set(usage_count_key, usage_count, ex=RECORD_INTERVAL)
+        async with get_session() as session:
+            session: AsyncSession
+            usage_count = await session.execute(
+                select(PromoCodeUsage).filter_by(promo_code_id=promo_code["id"])
+            )
+            usage_count = usage_count.scalar()
+            await redis.set(usage_count_key, usage_count, ex=RECORD_INTERVAL)
 
     if int(usage_count) >= int(promo_code["max_uses"]):
         await message.bot.edit_message_text(
@@ -104,29 +113,37 @@ async def confirm_promo_code(call: types.CallbackQuery, state: FSMContext):
     data = await state.get_data()
     promo_code_id = data["promo_code_id"]
     user_id = call.from_user.id
-    promo_code = session.query(PromoCode).get(promo_code_id)
-    user = session.query(User).filter_by(user_id=user_id).first()
+
+    async with get_session() as session:
+        session: AsyncSession
+        promo_code = await session.get(PromoCode, promo_code_id)
+        user = await session.execute(select(User).filter_by(user_id=user_id).limit(1))
+        user = user.scalar_one_or_none()
 
     user_usage_key = f"user:{user_id}:promo_code_usage:{promo_code_id}"
     user_usage = await redis.get(user_usage_key)
 
     if user_usage is None:
-        user_usage = (
-            session.query(PromoCodeUsage)
-            .filter_by(user_id=user.id, promo_code_id=promo_code.id)
-            .first()
-        )
-        if user_usage:
-            await redis.set(user_usage_key, "1", ex=RECORD_INTERVAL)
-            await call.message.edit_text(
-                "⚠️ Ты уже использовал этот промокод.",
-                reply_markup=create_close_back_keyboard("profile_back"),
+        async with get_session() as session:
+            session: AsyncSession
+            user_usage = await session.execute(
+                select(PromoCodeUsage)
+                .filter_by(user_id=user.id, promo_code_id=promo_code.id)
+                .limit(1)
             )
-            if state:
-                await state.finish()
-            return
-        else:
-            await redis.set(user_usage_key, "0", ex=RECORD_INTERVAL)
+            user_usage = user_usage.scalar_one_or_none()
+
+            if user_usage:
+                await redis.set(user_usage_key, "1", ex=RECORD_INTERVAL)
+                await call.message.edit_text(
+                    "⚠️ Ты уже использовал этот промокод.",
+                    reply_markup=create_close_back_keyboard("profile_back"),
+                )
+                if state:
+                    await state.finish()
+                return
+            else:
+                await redis.set(user_usage_key, "0", ex=RECORD_INTERVAL)
 
     if user_usage == "1":
         await call.message.edit_text(
@@ -138,18 +155,20 @@ async def confirm_promo_code(call: types.CallbackQuery, state: FSMContext):
         return
 
     if call.data == "confirm_promo_code_yes":
-        if promo_code.promo_type == "subscription":
-            subscription_duration_seconds = int(promo_code.value)
-            subscription_duration = timedelta(seconds=subscription_duration_seconds)
+        async with get_session() as session:
+            session: AsyncSession
+            if promo_code.promo_type == "subscription":
+                subscription_duration_seconds = int(promo_code.value)
+                subscription_duration = timedelta(seconds=subscription_duration_seconds)
 
-            if user.subscription_end:
-                user.subscription_end += subscription_duration
-            else:
-                user.subscription_end = datetime.now() + subscription_duration
+                if user.subscription_end:
+                    user.subscription_end += subscription_duration
+                else:
+                    user.subscription_end = datetime.now() + subscription_duration
 
-        new_usage = PromoCodeUsage(user_id=user.id, promo_code_id=promo_code.id)
-        session.add(new_usage)
-        session.commit()
+            new_usage = PromoCodeUsage(user_id=user.id, promo_code_id=promo_code.id)
+            session.add(new_usage)
+            await session.commit()
 
         usage_count_key = f"promo_code:{promo_code.id}:usage_count"
         await redis.incr(usage_count_key)
