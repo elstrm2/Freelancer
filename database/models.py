@@ -89,6 +89,11 @@ class BotSetting(Base):
     technical_works = Column(String, nullable=True)
     message_send_interval = Column(String, nullable=True)
     check_interval = Column(String, nullable=True)
+    max_requests = Column(String, nullable=True)
+    request_period = Column(String, nullable=True)
+    update_interval = Column(String, nullable=True)
+    post_cache_duration = Column(String, nullable=True)
+    message_fetch_limit = Column(String, nullable=True)
 
 
 class Channel(Base):

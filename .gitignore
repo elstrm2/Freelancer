@@ -14,6 +14,7 @@
 !/core/logger.py
 !/core/redis_client.py
 !/core/database.py
+!/core/telethon_client.py
 
 !/database/
 !/database/**/*

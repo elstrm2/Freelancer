@@ -35,3 +35,6 @@ SHORT_RECORD_INTERVAL = int(os.getenv("SHORT_RECORD_INTERVAL"))
 
 POOL_SIZE = int(os.getenv("POOL_SIZE"))
 MAX_OVERFLOW = int(os.getenv("MAX_OVERFLOW"))
+
+API_ID = int(os.getenv("API_ID"))
+API_HASH = os.getenv("API_HASH")
