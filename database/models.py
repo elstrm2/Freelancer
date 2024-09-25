@@ -86,9 +86,9 @@ class BotSetting(Base):
     support_message = Column(String, nullable=True)
     new_user_greeting = Column(String, nullable=True)
     registered_user_greeting = Column(String, nullable=True)
-    technical_works = Column(String, nullable=False)
-    message_send_interval = Column(BigInteger, nullable=False)
-    check_interval = Column(BigInteger, nullable=False)
+    technical_works = Column(String, nullable=True)
+    message_send_interval = Column(String, nullable=True)
+    check_interval = Column(String, nullable=True)
 
 
 class Channel(Base):
