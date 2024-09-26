@@ -1,5 +1,6 @@
 import json
 import logging
+from sqlalchemy.orm import selectinload
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.types import CallbackQuery
@@ -83,7 +84,9 @@ async def get_user_directions(user_id: int):
 
             internal_user_id = user.id
             result = await session.execute(
-                select(UserJobDirection).filter_by(user_id=internal_user_id)
+                select(UserJobDirection)
+                .filter_by(user_id=internal_user_id)
+                .options(selectinload(UserJobDirection.direction))
             )
             user_directions = result.scalars().all()
 
@@ -708,14 +711,19 @@ async def delete_direction(call: CallbackQuery, state: FSMContext):
     async with get_session() as session:
         session: AsyncSession
         # Получаем направление пользователя по идентификатору
-        user_direction = await session.get(UserJobDirection, direction_id)
+        user_direction = await session.execute(
+            select(UserJobDirection)
+            .filter_by(id=direction_id)
+            .options(selectinload(UserJobDirection.direction))
+        )
+        user_direction = user_direction.scalar_one_or_none()
 
         if user_direction:
             logger.debug(
                 f"Deleting direction: {user_direction.direction.direction_name}"
             )
-            await session.delete(user_direction)  # Удаляем объект
-            await session.commit()  # Подтверждаем транзакцию
+            await session.delete(user_direction)
+            await session.commit()
 
             user_id = call.from_user.id
             directions_cache_key = f"user:{user_id}:directions"
