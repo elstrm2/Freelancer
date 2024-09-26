@@ -38,3 +38,6 @@ MAX_OVERFLOW = int(os.getenv("MAX_OVERFLOW"))
 
 API_ID = int(os.getenv("API_ID"))
 API_HASH = os.getenv("API_HASH")
+
+PHONE_NUMBER = os.getenv("PHONE_NUMBER")
+PASSWORD = os.getenv("PASSWORD")
