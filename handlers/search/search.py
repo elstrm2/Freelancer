@@ -4,12 +4,12 @@ from aiogram import types
 from aiogram.dispatcher import Dispatcher
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from core.parser.main import get_user_directions
+from core.parser.main import get_interval_setting, get_user_directions
 from database.database import get_session
 from database.models import User
 from datetime import datetime
 from keyboards.profile.reply import main_menu
-from config.settings import BOT_NAME, RECORD_INTERVAL, SHORT_RECORD_INTERVAL
+from config.settings import BOT_NAME, RECORD_INTERVAL
 from core.redis_client import redis
 from keyboards.shared.inline import create_close_keyboard
 
@@ -62,6 +62,10 @@ async def get_user_search_status(user_id):
     search_key = get_user_search_key(user_id)
     is_search_active = await redis.get(search_key)
 
+    # Получаем интервал времени для статуса поиска пользователей из настроек
+    user_search_ttl = await get_interval_setting("user_search_ttl") or "30"
+    user_search_ttl = int(user_search_ttl)
+
     if is_search_active:
         is_search_active = (
             is_search_active.decode("utf-8")
@@ -78,9 +82,9 @@ async def get_user_search_status(user_id):
         )
 
     if is_search_active == "1":
-        await redis.expire(search_key, SHORT_RECORD_INTERVAL)
+        await redis.expire(search_key, user_search_ttl)
         logger.debug(
-            f"TTL для статуса поиска пользователя {user_id} обновлен на {SHORT_RECORD_INTERVAL} секунд."
+            f"TTL для статуса поиска пользователя {user_id} обновлен на {user_search_ttl} секунд."
         )
 
     return is_search_active == "1"

@@ -31,7 +31,6 @@ LOG_LEVEL = os.getenv("LOG_LEVEL")
 LOG_LEVEL = getattr(logging, LOG_LEVEL)
 
 RECORD_INTERVAL = int(os.getenv("RECORD_INTERVAL"))
-SHORT_RECORD_INTERVAL = int(os.getenv("SHORT_RECORD_INTERVAL"))
 
 POOL_SIZE = int(os.getenv("POOL_SIZE"))
 MAX_OVERFLOW = int(os.getenv("MAX_OVERFLOW"))

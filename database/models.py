@@ -96,6 +96,8 @@ class BotSetting(Base):
     message_fetch_limit = Column(String, nullable=True)
     channel_check_interval = Column(String, nullable=True)
     post_relevance = Column(String, nullable=True)
+    user_search_ttl = Column(String, nullable=True)
+    keyword_cache_duration = Column(String, nullable=True)
 
 
 class Channel(Base):
