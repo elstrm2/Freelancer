@@ -3,23 +3,18 @@
 import os
 import sys
 
-# Define the directory where pymorphy2 is installed
-# Adjust the path if necessary
 pymorphy2_dir = os.path.join(sys.prefix, "Lib", "site-packages", "pymorphy2")
 
-# Define the file and function we want to patch
 file_to_patch = os.path.join(pymorphy2_dir, "units", "base.py")
 old_function = "getargspec"
 new_function = "getfullargspec"
 
 
 def patch_file(file_path, old_func, new_func):
-    """Patches a file by replacing the old function with the new one."""
     try:
         with open(file_path, "r", encoding="utf-8") as file:
             content = file.read()
 
-        # Check if the patch is necessary
         if old_func in content:
             content = content.replace(old_func, new_func)
 
@@ -37,7 +32,6 @@ def patch_file(file_path, old_func, new_func):
 
 
 if __name__ == "__main__":
-    # Check if pymorphy2 is installed
     if os.path.exists(file_to_patch):
         patch_file(file_to_patch, old_function, new_function)
     else:
