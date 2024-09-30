@@ -91,6 +91,8 @@ class BotSetting(Base):
     check_interval = Column(String, nullable=True)
     max_requests = Column(String, nullable=True)
     request_period = Column(String, nullable=True)
+    max_requests_per_user = Column(String, nullable=True)
+    rate_limit_period = Column(String, nullable=True)
     update_interval = Column(String, nullable=True)
     post_cache_duration = Column(String, nullable=True)
     message_fetch_limit = Column(String, nullable=True)
@@ -98,6 +100,9 @@ class BotSetting(Base):
     post_relevance = Column(String, nullable=True)
     user_search_ttl = Column(String, nullable=True)
     keyword_cache_duration = Column(String, nullable=True)
+    max_synonyms = Column(String, nullable=True)
+    max_attempts = Column(String, nullable=True)
+    cache_ttl = Column(String, nullable=True)
 
 
 class Channel(Base):

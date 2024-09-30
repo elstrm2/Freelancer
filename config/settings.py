@@ -40,3 +40,5 @@ API_HASH = os.getenv("API_HASH")
 
 PHONE_NUMBER = os.getenv("PHONE_NUMBER")
 PASSWORD = os.getenv("PASSWORD")
+
+CONCURRENCY_LIMIT = int(os.getenv("CONCURRENCY_LIMIT"))
