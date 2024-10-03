@@ -99,10 +99,15 @@ class BotSetting(Base):
     channel_check_interval = Column(String, nullable=True)
     post_relevance = Column(String, nullable=True)
     user_search_ttl = Column(String, nullable=True)
-    keyword_cache_duration = Column(String, nullable=True)
     max_synonyms = Column(String, nullable=True)
     max_attempts = Column(String, nullable=True)
     cache_ttl = Column(String, nullable=True)
+    anti_spam_rate_limit = Column(String, nullable=True)
+    anti_spam_ban_time = Column(String, nullable=True)
+    anti_spam_window_time = Column(String, nullable=True)
+    anti_spam_smoothing_factor = Column(String, nullable=True)
+    anti_spam_last_second_weight = Column(String, nullable=True)
+    anti_spam_recovery_time = Column(String, nullable=True)
 
 
 class Channel(Base):

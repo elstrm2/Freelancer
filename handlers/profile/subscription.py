@@ -1,3 +1,4 @@
+import json
 import logging
 from aiogram import types
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -83,7 +84,7 @@ async def show_subscription_plans(call: types.CallbackQuery, state: FSMContext):
     cached_plans = await redis.get("subscription_plans")
 
     if cached_plans:
-        subscription_plans = eval(cached_plans)
+        subscription_plans = json.loads(cached_plans)
         logger.debug("Планы подписки загружены из кэша.")
     else:
         async with get_session() as session:
@@ -91,8 +92,13 @@ async def show_subscription_plans(call: types.CallbackQuery, state: FSMContext):
             result = await session.execute(select(SubscriptionPlan))
             subscription_plans = result.scalars().all()
 
+            serialized_plans = [
+                {"id": plan.id, "price": plan.price, "duration": plan.duration.days}
+                for plan in subscription_plans
+            ]
+
             await redis.set(
-                "subscription_plans", str(subscription_plans), ex=RECORD_INTERVAL
+                "subscription_plans", json.dumps(serialized_plans), ex=RECORD_INTERVAL
             )
             logger.debug("Планы подписки загружены из базы данных и сохранены в кэш.")
 
