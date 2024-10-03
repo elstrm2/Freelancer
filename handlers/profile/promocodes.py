@@ -35,7 +35,6 @@ async def enter_promo_code(message: types.Message, state: FSMContext):
     await message.delete()
 
     promo_code_input = message.text.strip()
-    user_id = message.from_user.id
     retry_count = (await state.get_data()).get("retry_count", 0)
     message_id = (await state.get_data()).get("message_id")
 
@@ -73,22 +72,18 @@ async def enter_promo_code(message: types.Message, state: FSMContext):
                 await EnterPromoCodeState.waiting_for_code.set()
                 return
 
-    # Преобразование promo_code['id'] в целое число
     promo_code_id = int(promo_code["id"])
-
     usage_count_key = f"promo_code:{promo_code_id}:usage_count"
     usage_count = await redis.get(usage_count_key)
 
     if usage_count is None:
         async with get_session() as session:
             session: AsyncSession
-            # Преобразование promo_code_id в нужный тип перед запросом
             usage_count = await session.execute(
                 select(PromoCodeUsage).filter_by(promo_code_id=promo_code_id)
             )
             usage_count = usage_count.scalar()
 
-            # Если usage_count все еще None, установим его в 0
             usage_count = usage_count if usage_count is not None else 0
 
             await redis.set(usage_count_key, usage_count, ex=RECORD_INTERVAL)
@@ -165,28 +160,22 @@ async def confirm_promo_code(call: types.CallbackQuery, state: FSMContext):
     if call.data == "confirm_promo_code_yes":
         async with get_session() as session:
             session: AsyncSession
-            # Проверяем тип промокода
             if promo_code.promo_type == "subscription":
                 subscription_duration_seconds = int(promo_code.value)
                 subscription_duration = timedelta(seconds=subscription_duration_seconds)
 
-                # Обновляем или устанавливаем значение subscription_end
                 if user.subscription_end:
                     user.subscription_end += subscription_duration
                 else:
                     user.subscription_end = datetime.now() + subscription_duration
 
-                # Добавляем обновленный объект user в сессию
                 session.add(user)
 
-            # Добавляем новую запись использования промокода
             new_usage = PromoCodeUsage(user_id=user.id, promo_code_id=promo_code.id)
             session.add(new_usage)
 
-            # Подтверждаем все изменения в транзакции
             await session.commit()
 
-        # Обновляем кэш после успешного применения транзакции
         usage_count_key = f"promo_code:{promo_code.id}:usage_count"
         await redis.incr(usage_count_key)
         await redis.set(user_usage_key, "1", ex=RECORD_INTERVAL)
