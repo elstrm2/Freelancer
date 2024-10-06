@@ -94,7 +94,11 @@ async def get_user_directions(user_id: int):
                 {
                     "id": user_direction.id,
                     "direction_id": user_direction.direction_id,
-                    "selected_keywords": user_direction.selected_keywords,
+                    "selected_keywords": (
+                        user_direction.selected_keywords.split("\n")
+                        if user_direction.selected_keywords
+                        else []
+                    ),
                     "direction_name": user_direction.direction.direction_name,
                 }
                 for user_direction in user_directions
@@ -471,7 +475,7 @@ async def show_direction_details(call: CallbackQuery, state: FSMContext = None):
         )
         await call.message.edit_text(
             f"📝 Направление: {user_direction['direction_name']}\n"
-            f"🔑 Количество ключевых слов: {len(user_direction['selected_keywords'].splitlines())}",
+            f"🔑 Количество ключевых слов: {len(user_direction['selected_keywords'])}",
             reply_markup=create_profile_direction_menu_keyboard(user_direction["id"]),
         )
     else:
@@ -500,7 +504,7 @@ async def edit_direction_keywords_start(call: CallbackQuery, state: FSMContext):
         )
 
         keywords = await get_keywords_for_direction(user_direction["direction_id"])
-        selected_keywords = user_direction["selected_keywords"].split("\n")
+        selected_keywords = user_direction["selected_keywords"]
         logger.debug(f"Selected keywords from database: {selected_keywords}")
 
         page = 1
