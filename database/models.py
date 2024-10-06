@@ -108,6 +108,8 @@ class BotSetting(Base):
     anti_spam_smoothing_factor = Column(String, nullable=True)
     anti_spam_last_second_weight = Column(String, nullable=True)
     anti_spam_recovery_time = Column(String, nullable=True)
+    concurrency_limit = Column(String, nullable=True)
+    message_concurrency_limit = Column(String, nullable=True)
 
 
 class Channel(Base):
