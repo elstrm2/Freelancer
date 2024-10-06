@@ -111,6 +111,8 @@ class BotSetting(Base):
     concurrency_limit = Column(String, nullable=True)
     message_concurrency_limit = Column(String, nullable=True)
     directions_concurrency_limit = Column(String, nullable=True)
+    ensure_connected_max_attempts = Column(String, nullable=True)
+    ensure_connected_wait_time = Column(String, nullable=True)
 
 
 class Channel(Base):
