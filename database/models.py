@@ -110,6 +110,7 @@ class BotSetting(Base):
     anti_spam_recovery_time = Column(String, nullable=True)
     concurrency_limit = Column(String, nullable=True)
     message_concurrency_limit = Column(String, nullable=True)
+    directions_concurrency_limit = Column(String, nullable=True)
 
 
 class Channel(Base):
