@@ -1,0 +1,57 @@
+======================== License ========================
+
+This source code is protected by copyright law. Users are 
+granted the right to view the code in this repository 
+solely for personal, non-commercial purposes. Any other 
+usage, including copying, modifying, or distributing the 
+code without the explicit, written permission of the 
+author, is strictly prohibited.
+
+===================== Terms of Use =====================
+
+1. Permitted Actions:
+- Users may view the source code for personal, 
+non-commercial purposes only. This is a read-only 
+permission, allowing users to explore the structure and 
+design of the code solely for individual reference or 
+education.
+
+2. Prohibited Actions:
+- Copying: Users may not reproduce, download, or store 
+copies of the code, either in part or in full, by any 
+means.
+- Modification: Users may not alter, modify, or adapt 
+the code, nor may they create derivative works based 
+on this code.
+- Distribution: Users may not distribute, publish, or 
+share the code or any part of it in any form or format, 
+either digitally or physically.
+- Commercial Use: Users are strictly prohibited from 
+using the code for any commercial purpose, including 
+but not limited to developing commercial products or 
+offering services that derive from, or are based on, 
+this code.
+
+3. Intellectual Property and Attribution:
+All intellectual property rights to this code remain 
+exclusively with Elias. No part of this code may be 
+used in any other project, product, or service without 
+explicit, written permission from the author. 
+The presence of this code in a public repository does 
+not grant users any rights beyond personal viewing.
+
+4. Disclaimer of Liability:
+The code is provided "as is," without any guarantees 
+or warranties of any kind, either expressed or implied, 
+including but not limited to warranties of fitness for 
+a particular purpose. The author assumes no 
+responsibility for any issues that may arise 
+from viewing this code.
+
+5. Legal Enforcement:
+Unauthorized use, reproduction, or distribution of 
+this code constitutes a breach of this license and may 
+result in legal action. By accessing this repository, 
+users agree to adhere to these terms and acknowledge 
+that violations may result in penalties under 
+applicable copyright and intellectual property laws.

@@ -1,5 +1,9 @@
 *
 
+!.env.example
+
+!LICENSE.txt
+
 !.gitignore
 !README.md
 
@@ -8,6 +12,9 @@
 
 !/config/
 !/config/settings.py
+
+!/debug/
+!/debug/.gitkeep
 
 !/core/
 !/core/bot.py
@@ -59,8 +66,20 @@
 !middlewares/tech_works.py
 !middlewares/ban.py
 
-!/scripts/
-!/scripts/**
+!/scripts/add_user.bat
+!/scripts/add_user.py
+!/scripts/add_user.sh
+
+!/scripts/create_db.bat
+!/scripts/create_db.py
+
+!/scripts/delete_db.bat
+!/scripts/delete_db.py
+
+!/scripts/run_bot.bat
+
+!/scripts/start_postgresql.bat
+!/scripts/stop_postgresql.bat
 
 !/tasks/
 !tasks/record_load_history.py
